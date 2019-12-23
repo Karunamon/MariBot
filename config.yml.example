@@ -1,0 +1,27 @@
+guild_defaults:
+  # The bot will not learn sentences that match these regexes (anywhere)
+  banned_regexes:
+  - http
+  - '```'
+  # The bot will not ignore sentences that contain these words (whole words only)
+  banned_words: []
+  # Location of the brain file for each server. Leave set to null.
+  brainfile: null
+  # Whether or not to respond to bot accounts
+  ignore_bots: true
+  # Whether learning is allowed or not
+  learn_enabled: true
+  limit_to: null
+  # If stfu is true, the bot will not speak unless spoken to
+  stfu: true
+  # if really_stfu is true, the bot will not speak unless commands are used.
+  really_stfu: true
+  # Save the brain file after this many messages
+  save_every: 10
+  # Interject with a random sentences this percentage of the time
+  speak_probability: 5
+guilds:
+  test_guild_please_ignore: null
+system:
+  # Replace with your token from the Discord developer dashboard
+  bot_token: null
