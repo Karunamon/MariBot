@@ -9,19 +9,6 @@ import copy
 import re
 
 
-learn_enabled = True
-saveevery = 10
-counter = 0
-speak_probability = 10
-banned_words = []
-not_here = []
-stfu = False
-really_stfu = False
-
-ready = False
-model = None
-
-
 class GuildModel(object):
     """Container struct for associated guilds (servers) with their data"""
     model = None
@@ -236,6 +223,10 @@ class MariBot(discord.Client):
             
 
     async def on_guild_join(self, guild):
+        """
+        Hook for when the bot is added to a new guild.
+        Presists a new configuration, copied from the default.
+        """
         print(f"*** Joined {guild.name}")
         self._init_guild(guild)
         
