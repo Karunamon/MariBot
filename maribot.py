@@ -181,9 +181,10 @@ class MariBot(discord.Client):
         #Let's not get obsessed with our own name
         sentence = [x for x in sentence if self.user.name in x]
 
-        newmod = markovify.Text(message.content, well_formed=False, retain_original=False)
-        gm.model = markovify.combine([gm.model, newmod])
-        print(self._format_message(message, "LEARN"))
+        for line in message.content.splitlines():
+            newmod = markovify.Text(line, well_formed=False, retain_original=False)
+            gm.model = markovify.combine([gm.model, newmod])
+            print(self._format_message(message, "LEARN"))
         if gm.counter >= gm.config['save_every']:
             gm.counter = 0
             gm.reload_model()
