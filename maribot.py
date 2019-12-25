@@ -87,15 +87,35 @@ class MariBot(discord.Client):
 
             self.models[guild.name] = gm
             self.ready = True
-
+    
     def _save_config(self):
         """Persist the bot configuration to disk"""
         with open('config.yml', 'w') as conffile:
             conffile.write(yaml.dump(self.config))
 
-    def _format_message(self, message, prefix=None):
+    def _format_message(self, message: discord.Message, prefix=None):
         """Return a string representation of a message with given prefix"""
         return f"[{prefix}] <{message.author.name}>: {message.content}"
+
+    def _clean_text(self, message_text: str) -> str:
+        """Runs various cleanup processes on incoming messages"""
+        text = message_text
+        # Convert UserIDs to textual names to avoid triggering mentions
+        mention_matches = re.search(r'(?:.+)?(<@!?\d+>)(?:.+)?', text)
+        if mention_matches:         
+            for mention in mention_matches.groups():
+                # looks like <@421925019447328769>
+                uid_n = int(''.join(i for i in mention if i not in '<>@!'))
+                try:
+                    # This can occasionally fail due to Discord shenanigans
+                    username = self.get_user(uid_n).display_name
+                    print(f"[MENTION->USERNAME] {mention} -> {username}")
+                except (TypeError, NameError, AttributeError):
+                    print(f"[ERROR: MENTION->USERNAME]: {text}")
+                    return ""  # Just send an empty string back, which will abort learning
+                text = re.sub(mention, username, text)
+        # Further cleanups go here
+        return text
 
     async def command(self, message: discord.Message):
         sentence = message.content.split(' ')
@@ -142,7 +162,6 @@ class MariBot(discord.Client):
         gm = self.models[message.guild.name]
         gm.counter += 1
         sentence = message.content.split(' ')
-        
         # Naked file uploads, some rich messages, etc have no text content
         if not len(message.content) > 0:
             print(self._format_message(message, "NOLEARN:NOCONTENT"))
@@ -201,25 +220,27 @@ class MariBot(discord.Client):
 
         if message.content.startswith('!'):
             await self.command(message)
+            return
 
+        message.content = self._clean_text(message.content)
+
+        addressed = True if self.user.name in message.content else False
+        if gm.config['learn_enabled']:
+            self.learn(message)
+        if gm.config['really_stfu']:
+            print(self._format_message(message, "NOSPEAK:RLYSTFU"))
+            return
+        if gm.config['stfu'] and not addressed:
+            print(self._format_message(message, "NOSPEAK:STFU"))
+            return
+        if gm.config['ignore_bots'] and message.author.bot:
+            print(self._format_message(message, "NOSPEAK:BOT"))
+            return
+        if not random.randint(1, 100) <= gm.config['speak_probability'] and not addressed:
+            print(self._format_message(message, "NOSPEAK:PROBABILITY"))
+            return
         else:
-            addressed = True if self.user.name in message.content else False
-            if gm.config['learn_enabled']:
-                self.learn(message)
-            if gm.config['really_stfu']:
-                print(self._format_message(message, "NOSPEAK:RLYSTFU"))
-                return
-            if gm.config['stfu'] and not addressed:
-                print(self._format_message(message, "NOSPEAK:STFU"))
-                return
-            if gm.config['ignore_bots'] and message.author.bot:
-                print(self._format_message(message, "NOSPEAK:BOT"))
-                return
-            if not random.randint(1, 100) <= gm.config['speak_probability'] and not addressed:
-                print(self._format_message(message, "NOSPEAK:PROBABILITY"))
-                return
-            else:
-                await self.speak(message)
+            await self.speak(message)
             
 
     async def on_guild_join(self, guild):
