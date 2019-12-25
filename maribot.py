@@ -8,6 +8,7 @@ import atexit
 import copy
 import re
 
+from util.chat import should_ignore_message, clean_text
 
 class GuildModel(object):
     """Container struct for associated guilds (servers) with their data"""
@@ -97,25 +98,6 @@ class MariBot(discord.Client):
         """Return a string representation of a message with given prefix"""
         return f"[{prefix}] <{message.author.name}>: {message.content}"
 
-    def _clean_text(self, message_text: str) -> str:
-        """Runs various cleanup processes on incoming messages"""
-        text = message_text
-        # Convert UserIDs to textual names to avoid triggering mentions
-        mention_matches = re.search(r'(?:.+)?(<@!?\d+>)(?:.+)?', text)
-        if mention_matches:         
-            for mention in mention_matches.groups():
-                # looks like <@421925019447328769>
-                uid_n = int(''.join(i for i in mention if i not in '<>@!'))
-                try:
-                    # This can occasionally fail due to Discord shenanigans
-                    username = self.get_user(uid_n).display_name
-                    print(f"[MENTION->USERNAME] {mention} -> {username}")
-                except (TypeError, NameError, AttributeError):
-                    print(f"[ERROR: MENTION->USERNAME]: {text}")
-                    return ""  # Just send an empty string back, which will abort learning
-                text = re.sub(mention, username, text)
-        # Further cleanups go here
-        return text
 
     async def command(self, message: discord.Message):
         sentence = message.content.split(' ')
@@ -210,20 +192,19 @@ class MariBot(discord.Client):
     async def on_message(self, message):
         gm = self.models[message.guild.name]
 
+        if should_ignore_message(message, gm.config, self):
+            return
+        
         # Don't do anything unless models are ready
         if not self.ready:
             print(self._format_message(message, "NOSPEAK:NOTREADY"))
-            return
-
-        # Don't trigger on our own messages
-        if message.author == self.user:
             return
 
         if message.content.startswith('!'):
             await self.command(message)
             return
 
-        message.content = self._clean_text(message.content)
+        message.content = clean_text(message.content, self)
 
         addressed = True if self.user.name in message.content else False
         if gm.config['learn_enabled']:
