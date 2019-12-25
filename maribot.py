@@ -50,10 +50,18 @@ class MariBot(discord.Client):
     config = None
     models = {}
     ready = False
+    sentry = None
 
     def __init__(self, config: dict):
         super().__init__()
         self.config = config
+        # Sentry.io integration
+        if 'sentry' in config.keys():
+            import sentry_sdk
+            self.sentry = sentry_sdk
+            self.sentry.init(config['sentry']['init_url'], environment="production")
+            print("*** Sentry.io integration enabled")
+
 
     def _reload_config(self):
         print(f"*** Reloading configuration by request")
@@ -249,6 +257,15 @@ class MariBot(discord.Client):
         print("*** Lost connection to Discord. Exiting.")
         sys.exit(1)
     
+    async def on_error(self, event, *args, **kwargs):
+        # Sentry.io integration
+        if self.sentry:
+            with self.sentry.configure_scope() as scope:
+                scope.set_tag("bot_event", event)
+                scope.set_extra("event_args", args)
+                scope.set_extra("event_kwargs", kwargs)
+                self.sentry.capture_exception(sys.exc_info())
+
     def shutdown(self):
         """Shutdown handler, forces all models to save."""
         for model in self.models.keys():
