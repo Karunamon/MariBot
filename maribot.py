@@ -168,9 +168,6 @@ class MariBot(discord.Client):
                 print(self._format_message(message, "NOLEARN:BANNEDREX"))
                 return
 
-        #Let's not get obsessed with our own name
-        sentence = [x for x in sentence if self.user.name in x]
-
         for line in message.content.splitlines():
             newmod = markovify.Text(line, well_formed=False, retain_original=False)
             gm.model = markovify.combine([gm.model, newmod])
@@ -212,9 +209,9 @@ class MariBot(discord.Client):
             await self.command(message)
             return
 
+        addressed = True if self.user.name in message.content else False
         message.content = clean_text(message.content, self)
 
-        addressed = True if self.user.name in message.content else False
         if gm.config['learn_enabled']:
             self.learn(message)
         if gm.config['really_stfu']:
