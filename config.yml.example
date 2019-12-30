@@ -3,7 +3,7 @@ guild_defaults:
   banned_regexes:
   - http
   - '```'
-  # The bot will not ignore sentences that contain these words (whole words only)
+  # The bot will ignore sentences that contain these words (whole words only)
   banned_words: []
   # Location of the brain file for each server. Leave set to null.
   brainfile: null
@@ -20,8 +20,13 @@ guild_defaults:
   save_every: 10
   # Interject with a random sentences this percentage of the time
   speak_probability: 5
+  # Do not learn or respond to messages from these users
+  ignored_users: []
+  # Do not learn or respond to messages from these channels:
+  ignored_channels: []
 guilds:
   test_guild_please_ignore: null
 system:
   # Replace with your token from the Discord developer dashboard
   bot_token: null
+  command_prefix: '@'

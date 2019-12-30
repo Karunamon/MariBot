@@ -1,2 +1,3 @@
 *.json
 config.yml
+__pycache__

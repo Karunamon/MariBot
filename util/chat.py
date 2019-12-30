@@ -1,5 +1,53 @@
 import discord
 import re
+import markovify
+
+class GuildModel(object):
+    """Container struct for associated guilds (servers) with their data"""
+    model = None
+    config = None
+    guild = None
+    brainfilename = None
+    counter = 0
+    timers = {}
+
+    def __init__(self, config: dict, guild: str):
+        self.config = config
+        self.guild = guild
+        self.brainfilename = config['brainfile']
+        try:
+            with open(self.brainfilename) as file:
+                print(f"Attempting to load brainfile for {self.guild}...")
+                self.model = markovify.Text.from_json(file.read())
+                print(f"Loaded {self.brainfilename} successfully")
+        except IOError:
+            print(f"Creating new brainfile for {guild}")
+            self.model = markovify.Text('y helo thar', well_formed=False)
+            self.save_model()
+
+    def reload_model(self):
+        self.save_model()
+        self.load_model()
+
+    def save_model(self):
+        j = self.model.to_json()
+        with open(self.brainfilename, 'w') as file:
+            file.write(j)
+
+    def load_model(self):
+        with open(self.brainfilename, 'r') as file:
+            self.model = markovify.Text.from_json(file.read())
+
+    # def add_timer(self, seconds: int, starttime: int, kind: str):
+    #     self.timers[uuid.uuid1()] = {start: starttime, seconds: seconds, kind: kind}
+    #     print(f"[NEWTIMER]: {seconds} seconds, {description} ({kind})")
+    
+    # def check_timers(self):
+    #     for timer in self.timers:
+    #         if timer['starttime'] + timer['seconds'] >= time.time():
+    #             return timer
+    #             del(self.timers[timer])
+    
 
 def should_ignore_message(message: discord.Message, gmconfig: dict, bot: discord.Client) -> bool:
     """

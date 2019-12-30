@@ -7,59 +7,27 @@ import os
 import atexit
 import copy
 import re
+import uuid
+import time
 
-from util.chat import should_ignore_message, clean_text
+from util.chat import should_ignore_message, clean_text, GuildModel
+from util.commands.chat import ChatCommands
 
-class GuildModel(object):
-    """Container struct for associated guilds (servers) with their data"""
-    model = None
-    config = None
-    guild = None
-    brainfilename = None
-    counter = 0
-
-    def __init__(self, config: dict, guild: str):
-        self.config = config
-        self.guild = guild
-        self.brainfilename = config['brainfile']
-        try:
-            with open(self.brainfilename) as file:
-                print(f"Attempting to load brainfile for {self.guild}...")
-                self.model = markovify.Text.from_json(file.read())
-                print(f"Loaded {self.brainfilename} successfully")
-        except IOError:
-            print(f"Creating new brainfile for {guild}")
-            self.model = markovify.Text('y helo thar', well_formed=False)
-            self.save_model()
-
-    def reload_model(self):
-        self.save_model()
-        self.load_model()
-
-    def save_model(self):
-        j = self.model.to_json()
-        with open(self.brainfilename, 'w') as file:
-            file.write(j)
-
-    def load_model(self):
-        with open(self.brainfilename, 'r') as file:
-            self.model = markovify.Text.from_json(file.read())
-
-
-class MariBot(discord.Client):
+class MariBot(discord.ext.commands.bot.Bot):
     config = None
     models = {}
     ready = False
     sentry = None
 
-    def __init__(self, config: dict):
-        super().__init__()
-        self.config = config
+    def __init__(self, bot_config: dict=None):
+        super().__init__(bot_config['system']['command_prefix'])
+        self.config = bot_config
+        self.add_cog(ChatCommands(self))
         # Sentry.io integration
-        if 'sentry' in config.keys():
+        if 'sentry' in self.config.keys():
             import sentry_sdk
             self.sentry = sentry_sdk
-            self.sentry.init(config['sentry']['init_url'], environment="production")
+            self.sentry.init(self.config['sentry']['init_url'], environment="production")
             print("*** Sentry.io integration enabled")
 
 
@@ -105,48 +73,7 @@ class MariBot(discord.Client):
     def _format_message(self, message: discord.Message, prefix=None):
         """Return a string representation of a message with given prefix"""
         return f"[{prefix}] <{message.author.name}>: {message.content}"
-
-
-    async def command(self, message: discord.Message):
-        sentence = message.content.split(' ')
-        command = sentence[0].lower()
-        gm = self.models[message.guild.name]
-        if command == '!stfu':
-            gm.config['stfu'] = True
-            await message.channel.send('Okay :(')
-            return
-        elif command == '!really_stfu':
-            gm.config['really_stfu'] = True
-            await message.channel.send('If you say so..')
-            return
-        elif command == '!wakeup':
-            gm.config['stfu'] = False
-            gm.config['really_stfu'] = False
-            await message.channel.send('Yay! :D')
-            return
-        elif command == '!probability':
-            try:
-                newprob = int(sentence[1])
-                if newprob < 1 or newprob > 100:
-                    raise RuntimeError("Probability must be a number between 1 and 100")
-            except Exception as e:
-                await message.channel.send(repr(e))
-                return
-            gm.config['speak_probability'] = newprob
-            await message.channel.send(f"Now replying {newprob}% of the time")
-            return
-        elif command == '!save':
-            gm.reload_model()
-            await message.channel.send(f"Done!")
-        elif command == '!dumpconfig':
-            await message.channel.send(gm.config)
-        elif command == '!reloadconfig':
-            self._reload_config()
-            await message.channel.send('Reloaded global bot config')
-        elif command == '!help':
-            await message.channel.send("!stfu: Don't speak unless spoken to | !really_stfu: Don't speak at all | !probability (number): Only reply this often | !wakeup: Allow to speak")
-
-
+  
     def learn(self, message: discord.Message):
         """Take the incoming message and combine it with the model, persisting a new model."""
         gm = self.models[message.guild.name]
@@ -168,6 +95,11 @@ class MariBot(discord.Client):
                 print(self._format_message(message, "NOLEARN:BANNEDREX"))
                 return
 
+        # Check for bot message
+        if gm.config['ignore_bots'] and message.author.bot:
+            self._format_message(message, "NOLEARN:BOT")
+            return
+        
         for line in message.content.splitlines():
             newmod = markovify.Text(line, well_formed=False, retain_original=False)
             gm.model = markovify.combine([gm.model, newmod])
@@ -194,9 +126,10 @@ class MariBot(discord.Client):
         self._initialize_brains()
         print('Ready.')
 
-    async def on_message(self, message):
+    async def on_message(self, message: discord.Message):
+        await self.process_commands(message)
         gm = self.models[message.guild.name]
-
+        
         if should_ignore_message(message, gm.config, self):
             return
         
@@ -205,9 +138,9 @@ class MariBot(discord.Client):
             print(self._format_message(message, "NOSPEAK:NOTREADY"))
             return
 
-        if message.content.startswith('!'):
-            await self.command(message)
-            return
+        #if message.content.startswith('!'):
+        #    await self.command(message)
+        #    return
 
         addressed = True if self.user.name in message.content else False
         message.content = clean_text(message.content, self)
@@ -251,8 +184,10 @@ class MariBot(discord.Client):
         print("*** Connected to Discord. Attempting to login..")
 
     async def on_disconnect(self):
-        print("*** Lost connection to Discord. Exiting.")
-        sys.exit(1)
+        print("*** Lost connection to Discord.")
+    
+    async def on_resumed(self):
+        print("*** Reconnected")
     
     async def on_error(self, event, *args, **kwargs):
         # Sentry.io integration
@@ -276,7 +211,7 @@ conf = None
 with open('config.yml', 'r') as file:
     conf = yaml.safe_load(file)
     print("*** Configuration loaded")
-bot = MariBot(conf)
 
+bot = MariBot(bot_config=conf)
 atexit.register(bot.shutdown)
 bot.run(conf['system']['bot_token'])
