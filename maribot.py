@@ -267,6 +267,7 @@ class MariBot(discord.Client):
         """Shutdown handler, forces all models to save."""
         for model in self.models.keys():
             self.models[model].save_model()
+        self._save_config()
         print("*** Saving models and shutting down")
 
 
