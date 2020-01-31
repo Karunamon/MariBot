@@ -78,33 +78,12 @@ class MariBot(discord.ext.commands.bot.Bot):
         """Take the incoming message and combine it with the model, persisting a new model."""
         gm = self.models[message.guild.name]
         gm.counter += 1
-        sentence = message.content.split(' ')
-        # Naked file uploads, some rich messages, etc have no text content
-        if not len(message.content) > 0:
-            print(self._format_message(message, "NOLEARN:NOCONTENT"))
-            return
-
-        # Check for banned words
-        if len([w for w in sentence if w in gm.config['banned_words']]) > 0:
-            print(self._format_message(message, "NOLEARN:BANNEDWORD"))
-            return
-
-        # Check for banned regexes
-        for rex in gm.config['banned_regexes']:
-            if re.match(rex, message.content):
-                print(self._format_message(message, "NOLEARN:BANNEDREX"))
-                return
 
         # Implicitly ignore anything with the current command prefix as well
         if self.config['system']['command_prefix'] in message.content[0]:
             print(self._format_message(message, "NOLEARN:COMMAND"))
             return
 
-        # Check for bot message
-        if gm.config['ignore_bots'] and message.author.bot:
-            self._format_message(message, "NOLEARN:BOT")
-            return
-        
         for line in message.content.splitlines():
             newmod = markovify.Text(line, well_formed=False, retain_original=False)
             gm.model = markovify.combine([gm.model, newmod])

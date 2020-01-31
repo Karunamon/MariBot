@@ -58,11 +58,24 @@ def should_ignore_message(message: discord.Message, gmconfig: dict, bot: discord
     and the configuration of the server
     """
     if message.channel.name in gmconfig['ignored_channels']:
+        print(bot._format_message(message, "NOLEARN:CHANNEL_IGNORE"))
         return True
     elif message.author.id in gmconfig['ignored_users']:
+        print(bot._format_message(message, "NOLEARN:USER_IGNORE"))
         return True
-    elif message.author == bot.user:
+    elif message.author == bot.user and gmconfig['ignore_bots']:
+        print(bot._format_message(message, "NOLEARN:BOT_IGNORE"))
         return True
+    elif not len(message.content) > 0:
+        print(bot._format_message(message, "NOLEARN:NOCONTENT"))
+        return True
+    elif len([w for w in message.content.split(' ') if w in gmconfig['banned_words']]) > 0:
+        print(bot._format_message(message, "NOLEARN:BANNEDWORD"))
+        return True
+    for rex in gmconfig['banned_regexes']:
+        if re.match(rex, message.content):
+            print(bot._format_message(message, "NOLEARN:BANNEDREX"))
+            return True
     
     return False
 
