@@ -95,7 +95,7 @@ class ChatCommands(commands.Cog):
         if arg < 1 or arg > 100:
             raise CommandError("Must be a number between 1 and 100")
         gm = gm_from_ctx(ctx)
-        gm.config['speak_probability'] = int
+        gm.config['speak_probability'] = arg
         await ctx.send(f"Now replying {arg}% of the time.")
 
     @commands.command()
