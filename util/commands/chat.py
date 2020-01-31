@@ -2,6 +2,61 @@ from discord.ext import commands
 from discord.ext.commands import CommandError
 from util.etc import gm_from_ctx
 
+def format_mode(config: dict) -> str:
+    if config["really_stfu"]:
+        return "Really STFU (silent except for commands)"
+    elif config["stfu"]:
+        return "STFU (silent unless mentioned by name)"
+    else:
+        return "Normal (speaks according to probability)"
+
+def format_config(model) -> str:
+    """Formats a GuildModel configuration for pretty output"""
+    config = model.config
+    banned_regexes = ''
+    ignored_users = ''
+    ignored_channels = ''
+    banned_words = ''
+    if model.config['banned_regexes']:
+        for i in model.config['banned_regexes']:
+            banned_regexes += "\n  * " + i.replace("`", ":bt:")
+    else:
+        banned_regexes = "None"
+
+    if model.config['ignored_users']:
+        for i in model.config['ignored_users']:
+            ignored_users += "\n  * " + i.replace("`", ":bt:")
+    else:
+        ignored_users = "None"
+    
+    if model.config['ignored_channels']:
+        for i in model.config['ignored_channels']:
+            ignored_channels += "\n  * " + i.replace("`", ":bt:")
+    else:
+        ignored_channels = "None"
+
+
+    if model.config['banned_words']:
+        for i in model.config['banned_words']:
+            banned_words += "\n  * " + i.replace("`", ":bt:")
+    else:
+        banned_words = "None"
+    
+
+    return f"""```markdown
+# Configuration for {model.guild}
+
+* This server's brainfile: {config['brainfile']}
+* Save brainfile to disk every: {config['save_every']} messages
+* Learning enabled: {config['learn_enabled']}
+* Speak mode: {format_mode(config)}
+* Speak probability: %{config['speak_probability']}
+
+* Ignored regexes: {banned_regexes}
+* Ignored whole words: {banned_words}
+* Ignored channels: {ignored_channels}
+* Ignored users: {ignored_users}
+* Ignore bots: {config['ignore_bots']}```"""
 class ChatCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -48,7 +103,7 @@ class ChatCommands(commands.Cog):
     async def dumpconfig(self, ctx):
         """Shows current configuration in this server"""
         gm = gm_from_ctx(ctx)
-        await ctx.send(gm.config)
+        await ctx.send(format_config(gm))
 
     @commands.command()
     async def reloadconfig(self, ctx):
