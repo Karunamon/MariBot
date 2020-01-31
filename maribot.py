@@ -95,6 +95,11 @@ class MariBot(discord.ext.commands.bot.Bot):
                 print(self._format_message(message, "NOLEARN:BANNEDREX"))
                 return
 
+        # Implicitly ignore anything with the current command prefix as well
+        if self.config['system']['command_prefix'] in message.content[0]:
+            print(self._format_message(message, "NOLEARN:COMMAND"))
+            return
+
         # Check for bot message
         if gm.config['ignore_bots'] and message.author.bot:
             self._format_message(message, "NOLEARN:BOT")
@@ -138,11 +143,7 @@ class MariBot(discord.ext.commands.bot.Bot):
             print(self._format_message(message, "NOSPEAK:NOTREADY"))
             return
 
-        #if message.content.startswith('!'):
-        #    await self.command(message)
-        #    return
-
-        addressed = True if self.user.name in message.content else False
+        addressed = True if self.user.name.lower() in message.content.lower() else False
         message.content = clean_text(message.content, self)
 
         if gm.config['learn_enabled']:
