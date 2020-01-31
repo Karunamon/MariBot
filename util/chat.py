@@ -15,6 +15,8 @@ class GuildModel(object):
         self.config = config
         self.guild = guild
         self.brainfilename = config['brainfile']
+        self.last_enabler = None
+        self.last_disabler = None
         try:
             with open(self.brainfilename) as file:
                 print(f"Attempting to load brainfile for {self.guild}...")

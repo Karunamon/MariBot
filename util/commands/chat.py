@@ -66,14 +66,18 @@ class ChatCommands(commands.Cog):
         """Prevents me from speaking unless spoken to"""
         gm = gm_from_ctx(ctx)
         gm.config['stfu'] = True
-        await ctx.send('Okay :(')
+        gm.last_disabler = ctx.message.author.nick
+        enablewords = f" (last enabled by {gm.last_enabler})" if gm.last_enabler else ""
+        await ctx.send('Okay :(' + enablewords)
 
     @commands.command()
     async def really_stfu(self, ctx):
         """Prevents me from speaking at all unless responding to a command"""
         gm = gm_from_ctx(ctx)
         gm.config['really_stfu'] = True
-        await ctx.send('If you say so ;_;')
+        gm.last_disabler = ctx.message.author.nick
+        enablewords = f" (last enabled by {gm.last_enabler})" if gm.last_enabler else ""
+        await ctx.send('If you say so ;_;' + enablewords)
 
     @commands.command()
     async def wakeup(self, ctx):
@@ -81,7 +85,9 @@ class ChatCommands(commands.Cog):
         gm = gm_from_ctx(ctx)
         gm.config['stfu'] = False
         gm.config['really_stfu'] = False
-        await ctx.send('Yay! :D')
+        gm.last_enabler = ctx.message.author.nick
+        disablewords = f" (last disabled by {gm.last_disabler})" if gm.last_disabler else ""
+        await ctx.send('Yay! :D' + disablewords)
 
     @commands.command()
     async def probability(self, ctx, arg: int):
